@@ -32,7 +32,9 @@ import ai_core
 load_dotenv()
 
 WECHAT_TOKEN = os.getenv("WECHAT_TOKEN", "ai-customer-service-token")
-PORT = int(os.getenv("PORT", "8001"))
+# 微信服务端口：用独立的 WECHAT_PORT（默认 8001），避免与 .env 中
+# streamlit 用的 PORT=8501 混淆冲突。
+PORT = int(os.getenv("WECHAT_PORT", "8001"))
 
 app = Flask(__name__)
 

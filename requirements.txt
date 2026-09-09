@@ -1,13 +1,11 @@
-# Web UI
+# Web UI（Streamlit Cloud 部署时自动安装）
 streamlit>=1.30.0
 
-# LLM（走百炼 OpenAI 兼容接口，用 requests 直连，无需 openai 库）
+# 环境变量加载（云端改用平台 Secrets 注入，本包保证本地可用）
+python-dotenv>=1.0.0
 
-# 环境变量加载
-python-dotenv==1.0.0
+# HTTP（大模型 OpenAI 兼容调用 + 微信）
+requests>=2.31.0
 
-# HTTP（大模型调用 + 微信）
-requests==2.31.0
-
-# 微信接入服务器（wechat_bot.py）
-flask==3.0.0
+# 微信接入服务器（本地用，云端网页版用不到）
+flask>=3.0.0
