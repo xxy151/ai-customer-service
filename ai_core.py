@@ -41,6 +41,9 @@ LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-max")
 LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "20"))
 HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "8"))   # 携带最近 N 轮历史
 
+# 最近一次大模型调用失败原因（诊断用；成功时清空）
+last_llm_error = ""
+
 
 def _pick_db_path():
     """优先项目目录 SQLite；目录不可写（如 Streamlit Cloud 只读挂载）时自动回退系统临时目录。"""
@@ -213,14 +216,17 @@ def _topic_alias(topic):
 # --------------------------------------------------------------------------
 def llm_answer(user_type, user_input, session_id=None):
     """调用百炼大模型（OpenAI 兼容接口，用 requests 实现，避免额外依赖）。
-    返回 (text, model)；失败时返回 (None, None)。"""
+    返回 (text, model)；失败时返回 (None, None)，并把原因写入 last_llm_error。"""
+    global last_llm_error
+    last_llm_error = ""
     if not LLM_API_KEY:
-        logger.warning("缺少 DASHSCOPE_API_KEY / OPENAI_API_KEY，跳过 LLM")
+        last_llm_error = "未配置 DASHSCOPE_API_KEY"
+        logger.warning(last_llm_error)
         return None, None
     try:
         import requests
     except ImportError:
-        logger.warning("未安装 requests 库，跳过 LLM")
+        last_llm_error = "未安装 requests 库"
         return None, None
 
     kb_text = "\n".join(
@@ -246,12 +252,14 @@ def llm_answer(user_type, user_input, session_id=None):
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=LLM_TIMEOUT)
         if resp.status_code != 200:
+            last_llm_error = f"HTTP {resp.status_code}: {resp.text[:150]}"
             logger.warning("LLM HTTP %s: %s", resp.status_code, resp.text[:300])
             return None, None
         data = resp.json()
         text = (data["choices"][0]["message"]["content"] or "").strip()
         return text, data.get("model") or LLM_MODEL
     except Exception as e:  # noqa: BLE001
+        last_llm_error = f"{type(e).__name__}: {e}"
         logger.exception("LLM 调用失败: %s", e)
         return None, None
 
@@ -288,10 +296,11 @@ def ask(user_input, user_type, session_id=None, save=True):
                 save_message(session_id, "user", user_input, source="user")
                 save_message(session_id, "assistant", llm_text, source=f"llm:{model}")
         else:
-            # 3) 兜底（同样落库，保证界面与历史一致、不丢消息）
+            # 3) 兜底（同样落库，保证界面与历史一致、不丢消息）；附上原因便于诊断
+            reason = last_llm_error or "未知原因"
             answer = (
                 f"您好！关于“{user_input[:50]}”，知识库暂时没有现成答案，"
-                f"大模型服务当前不可用（云端访问超时或未配置 DASHSCOPE_API_KEY）。"
+                f"大模型暂时不可用（诊断: {reason}）。"
                 f"您可以先尝试“订单查询 / 物流跟踪 / 退换货”等快捷问题。"
             )
             source = "fallback"
