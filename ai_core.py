@@ -296,12 +296,12 @@ def ask(user_input, user_type, session_id=None, save=True):
                 save_message(session_id, "user", user_input, source="user")
                 save_message(session_id, "assistant", llm_text, source=f"llm:{model}")
         else:
-            # 3) 兜底（同样落库，保证界面与历史一致、不丢消息）；附上原因便于诊断
-            reason = last_llm_error or "未知原因"
+            # 3) 兜底（同样落库，保证界面与历史一致、不丢消息）
+            logger.warning("LLM fallback for: %s | reason=%s", user_input[:50], last_llm_error)
             answer = (
                 f"您好！关于“{user_input[:50]}”，知识库暂时没有现成答案，"
-                f"大模型暂时不可用（诊断: {reason}）。"
-                f"您可以先尝试“订单查询 / 物流跟踪 / 退换货”等快捷问题。"
+                f"大模型服务暂时繁忙，请稍后再试。"
+                f"您也可以先尝试“订单查询 / 物流跟踪 / 退换货”等快捷问题。"
             )
             source = "fallback"
             if save:
