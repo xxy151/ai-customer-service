@@ -80,3 +80,6 @@ Thumbs.db
 # MongoDB
 *.mdb
 mongod.lock
+*.db
+__pycache__/
+app.log

@@ -1,28 +1,13 @@
-# Web Framework
+# Web UI
 streamlit==1.30.0
 
-# Chat UI Component
-streamlit-chat==0.1.2
+# LLM（走百炼 OpenAI 兼容接口，用 requests 直连，无需 openai 库）
 
-# AI & Language Models
-langchain==0.1.0
-langchain-openai==0.0.5
-openai==1.10.0
-
-# Environment Variables
+# 环境变量加载
 python-dotenv==1.0.0
 
-# HTTP Requests
+# HTTP（大模型调用 + 微信）
 requests==2.31.0
 
-# Data Validation
-pydantic==2.5.0
-
-# Database
-pymongo==4.6.0
-
-# Image Processing
-Pillow==10.1.0
-
-# Caching
-streamlit-lottie==0.0.5
+# 微信接入服务器（wechat_bot.py）
+flask==3.0.0
