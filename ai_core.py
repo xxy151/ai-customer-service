@@ -37,8 +37,27 @@ DB_PATH = os.getenv("DB_PATH", os.path.join(_BASE_DIR, "ai_customer.db"))
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 LLM_API_KEY = os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-max")
-LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "40"))
+# 云端部署时目录可能只读、跨境访问 LLM 可能慢：超时缩短，失败快速兜底，避免用户干等
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "20"))
 HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "8"))   # 携带最近 N 轮历史
+
+
+def _pick_db_path():
+    """优先项目目录 SQLite；目录不可写（如 Streamlit Cloud 只读挂载）时自动回退系统临时目录。"""
+    import tempfile
+    candidates = [os.getenv("DB_PATH") or "", os.path.join(_BASE_DIR, "ai_customer.db")]
+    candidates.append(os.path.join(tempfile.gettempdir(), "ai_customer.db"))
+    for p in candidates:
+        if not p:
+            continue
+        try:
+            conn = sqlite3.connect(p)
+            conn.execute("SELECT 1")
+            conn.close()
+            return p
+        except Exception:
+            continue
+    return os.path.join(tempfile.gettempdir(), "ai_customer.db")
 
 # --------------------------------------------------------------------------
 # 知识库（关键词快速命中，命中即秒回、不调大模型）
@@ -75,7 +94,7 @@ SYSTEM_PROMPTS = {
 # SQLite
 # --------------------------------------------------------------------------
 def _connect():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(_pick_db_path(), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute(
         """CREATE TABLE IF NOT EXISTS sessions(

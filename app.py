@@ -15,8 +15,13 @@ import ai_core
 
 load_dotenv()
 
-logging.basicConfig(filename="app.log", level=logging.INFO,
-                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+try:
+    logging.basicConfig(filename="app.log", level=logging.INFO,
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+except Exception:
+    # 云端只读目录无法写日志文件时退化为控制台日志
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("app")
 
 # 页面配置
