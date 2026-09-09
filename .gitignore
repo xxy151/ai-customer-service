@@ -83,3 +83,4 @@ mongod.lock
 *.db
 __pycache__/
 app.log
+.venv/
