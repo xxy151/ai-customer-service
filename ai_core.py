@@ -160,14 +160,19 @@ def load_messages(session_id, limit=100):
 
 
 def recent_turns(session_id, n=HISTORY_LIMIT):
-    """最近 n 轮 (user, assistant) 供大模型作为多轮上下文。"""
+    """最近 n 轮 (user, assistant) 供大模型作为多轮上下文；
+    兜底回复(source=fallback)不进入上下文，避免污染模型。"""
     msgs = load_messages(session_id)
     turns = []
+    pending = None
     for m in msgs:
         if m["role"] == "user":
-            turns.append({"role": "user", "content": m["content"]})
-        elif m["role"] == "assistant" and turns and turns[-1]["role"] == "user":
-            turns.append({"role": "assistant", "content": m["content"]})
+            pending = {"role": "user", "content": m["content"]}
+        elif m["role"] == "assistant":
+            if pending and not str(m.get("source", "")).startswith("fallback"):
+                turns.append(pending)
+                turns.append({"role": "assistant", "content": m["content"]})
+            pending = None
     return turns[-n:]
 
 
@@ -283,13 +288,16 @@ def ask(user_input, user_type, session_id=None, save=True):
                 save_message(session_id, "user", user_input, source="user")
                 save_message(session_id, "assistant", llm_text, source=f"llm:{model}")
         else:
-            # 3) 兜底（不落库，避免污染历史）
+            # 3) 兜底（同样落库，保证界面与历史一致、不丢消息）
             answer = (
                 f"您好！关于“{user_input[:50]}”，知识库暂时没有现成答案，"
-                f"大模型服务当前不可用（请检查 .env 中 DASHSCOPE_API_KEY 与网络）。"
+                f"大模型服务当前不可用（云端访问超时或未配置 DASHSCOPE_API_KEY）。"
                 f"您可以先尝试“订单查询 / 物流跟踪 / 退换货”等快捷问题。"
             )
             source = "fallback"
+            if save:
+                save_message(session_id, "user", user_input, source="user")
+                save_message(session_id, "assistant", answer, source="fallback")
 
     return {"answer": answer, "source": source, "model": model if source == "llm" else "",
             "session_id": session_id}
